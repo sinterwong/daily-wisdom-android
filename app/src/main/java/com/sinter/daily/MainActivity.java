@@ -80,16 +80,45 @@ public class MainActivity extends Activity {
         row(body,button("换一句",()->{Store.next(this);render();}),
                 button(Store.favorite(this,current)?"♥ 已收藏":"♡ 收藏",()->{Store.toggle(this,current);render();}),
                 button(Store.held(this)?"恢复更新":"让它停留",()->{Store.hold(this);render();}));gap(body,12);
-        body.addView(button("＋ 放到手机桌面",this::pin));gap(body,12);
+        body.addView(button("＋ 放到手机桌面",this::pin));gap(body,8);
+        body.addView(button("从系统小组件添加",this::widgetHelp));gap(body,12);
         row(body,button("我的收藏 · "+Store.favorites(this).size(),this::favorites),button("切换句库",this::chooseLibrary));gap(body,12);
         row(body,button("导入 JSON",this::importFile),button("导出当前句库",this::exportFile));gap(body,22);
         body.addView(text(Store.held(this)?"已暂停每日换句。点击「恢复更新」继续；「换一句」也会结束停留。":"每天换一条，同一天保持不变。读完当前句库一轮再重复；每个句库分别保存收藏和阅读进度。",13,muted));gap(body,16);
         TextView help=text("使用说明 ↗",13,purple);help.setPadding(0,dp(10),0,dp(10));help.setOnClickListener(v->help());body.addView(help);
     }
     private void pin() {
-        AppWidgetManager manager=AppWidgetManager.getInstance(this);
-        if (manager.isRequestPinAppWidgetSupported()) manager.requestPinAppWidget(new ComponentName(this,QuoteWidget.class),null,null);
-        else message("手动添加小组件","回到手机桌面 → 长按空白处 → 小组件／窗口小工具 → 一日一句。部分桌面也可通过双指捏合进入编辑模式。");
+        // Keep guidance visible underneath the launcher confirmation, including silent rejection.
+        AlertDialog dialog=new AlertDialog.Builder(this).setTitle("添加桌面小组件")
+                .setMessage("点击「请求添加」，然后在桌面弹出的窗口中确认。\n\n如果没有弹窗，或取消后想重试，可使用「手动添加」。")
+                .setPositiveButton("请求添加",null)
+                .setNeutralButton("手动添加",(d,w)->widgetHelp())
+                .setNegativeButton("关闭",null).create();
+        dialog.setOnShowListener(d->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
+            AppWidgetManager manager=AppWidgetManager.getInstance(this);
+            try {
+                if (!manager.isRequestPinAppWidgetSupported()) {
+                    dialog.setMessage("当前桌面不支持应用内添加。请点击「手动添加」，从系统小组件列表添加「一日一句」。");
+                    return;
+                }
+                boolean accepted=manager.requestPinAppWidget(new ComponentName(this,QuoteWidget.class),null,
+                        QuoteWidget.action(this,QuoteWidget.PINNED,4));
+                dialog.setMessage(accepted
+                        ? "已发送添加请求，请在桌面弹窗中确认。请求发出不代表已经添加成功。\n\n如果没有弹窗，请点击「手动添加」。"
+                        : "桌面未接受添加请求。请点击「手动添加」，从系统小组件列表添加。");
+            } catch (IllegalStateException | SecurityException | IllegalArgumentException e) {
+                dialog.setMessage("当前桌面无法完成应用内添加。请点击「手动添加」，从系统小组件列表添加。");
+            }
+        }));
+        dialog.show();
+    }
+    private void widgetHelp() {
+        new AlertDialog.Builder(this).setTitle("从系统小组件添加")
+                .setMessage("1. 回到手机桌面，长按空白处。\n2. 选择「小组件」「添加小部件」或「窗口小工具」。\n3. 找到「一日一句」，长按卡片并拖到桌面。\n\n推荐 4×2，可长按卡片调整大小。部分桌面需进入「全部」或「Android 小部件」才能看到第三方组件。\n\n如果列表中暂时没有它，请先打开本应用一次，再返回桌面重试；确认应用安装在当前用户空间中。")
+                .setPositiveButton("回到桌面",(d,w)->{
+                    try { startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)); }
+                    catch (ActivityNotFoundException e) { message("回到桌面","请使用手机的 Home 手势或主页键返回桌面。"); }
+                }).setNegativeButton("关闭",null).show();
     }
     private void favorites() {
         List<Integer> ids=Store.favorites(this);

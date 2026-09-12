@@ -28,6 +28,34 @@ public class WidgetSmokeTest {
     @Before public void selectBuiltin() { Libraries.select(getInstrumentation().getTargetContext(),Libraries.BUILTIN); }
     @After public void restoreBuiltin() { Libraries.select(getInstrumentation().getTargetContext(),Libraries.BUILTIN); }
 
+    @Test public void testSystemDiscoversAndBindsWidget() {
+        Context c=getInstrumentation().getTargetContext();
+        AppWidgetManager manager=AppWidgetManager.getInstance(c);
+        android.content.ComponentName component=new android.content.ComponentName(c,QuoteWidget.class);
+        android.appwidget.AppWidgetProviderInfo info=null;
+        for (android.appwidget.AppWidgetProviderInfo candidate:manager.getInstalledProviders()) {
+            if (component.equals(candidate.provider)) { info=candidate;break; }
+        }
+        assertNotNull("Provider must appear in the system widget catalog",info);
+        assertEquals("一日一句",info.loadLabel(c.getPackageManager()));
+        assertTrue((info.widgetCategory & android.appwidget.AppWidgetProviderInfo.WIDGET_CATEGORY_HOME_SCREEN)!=0);
+        android.appwidget.AppWidgetHost host=new android.appwidget.AppWidgetHost(c,731);
+        getInstrumentation().getUiAutomation().adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET");
+        int id=host.allocateAppWidgetId();
+        try {
+            assertTrue("System host must be able to bind this provider",manager.bindAppWidgetIdIfAllowed(id,component));
+            assertEquals(component,manager.getAppWidgetInfo(id).provider);
+            getInstrumentation().runOnMainSync(()->{
+                android.appwidget.AppWidgetHostView view=host.createView(c,id,manager.getAppWidgetInfo(id));
+                view.updateAppWidget(QuoteWidget.buildViews(c,Store.current(c),new Bundle()));
+                assertNotNull(view.findViewById(R.id.quote));
+            });
+        } finally {
+            host.deleteAppWidgetId(id);
+            getInstrumentation().getUiAutomation().dropShellPermissionIdentity();
+        }
+    }
+
     @Test public void testWidgetInflatesOnAndroid() throws Throwable {
         final Context c = getInstrumentation().getTargetContext();
         getInstrumentation().runOnMainSync(() -> {

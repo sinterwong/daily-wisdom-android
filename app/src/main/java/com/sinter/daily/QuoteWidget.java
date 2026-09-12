@@ -16,6 +16,7 @@ import java.util.Date;
 import java.util.Locale;
 
 public class QuoteWidget extends AppWidgetProvider {
+    static final String PINNED = "com.sinter.daily.PINNED";
     static final String NEXT = "com.sinter.daily.NEXT";
     static final String FAV = "com.sinter.daily.FAV";
     static final String TICK = "com.sinter.daily.TICK";
@@ -83,7 +84,10 @@ public class QuoteWidget extends AppWidgetProvider {
 
     @Override public void onReceive(Context c, Intent intent) {
         String action = intent.getAction();
-        if (NEXT.equals(action)) {
+        if (PINNED.equals(action)) {
+            refresh(c);
+            android.widget.Toast.makeText(c,"桌面小组件已添加",android.widget.Toast.LENGTH_LONG).show();
+        } else if (NEXT.equals(action)) {
             Store.next(c);
             refresh(c);
         } else if (FAV.equals(action)) {

@@ -36,6 +36,8 @@ commit = os.environ.get('GITHUB_SHA', '')
 Path('release-notes.md').write_text(f'''一日一句 {args.tag}：通用离线 Android 每日内容卡片。
 
 - Android 8.0 及以上；支持标准桌面小组件。
+- 添加桌面时提供请求反馈和成功回调；桌面无弹窗时可使用手动添加入口。
+- 系统组件列表显示「一日一句」及卡片预览。
 - 每日随机、收藏、停留、多句库独立进度。
 - 支持 JSON 导入导出；附格式说明、JSON Schema 和可直接导入的示例。
 
