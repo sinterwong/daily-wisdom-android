@@ -98,6 +98,13 @@ public class WidgetSmokeTest {
             assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG,100,output));
         } catch (Exception e) { throw new AssertionError(e); }
         bitmap.recycle();
+        // Gradle uninstalls the test application afterward; preserve previews outside app storage.
+        String command = "cp " + new File(c.getExternalFilesDir(null),filename).getAbsolutePath()
+                + " /data/local/tmp/" + filename;
+        try (android.os.ParcelFileDescriptor result = getInstrumentation().getUiAutomation().executeShellCommand(command);
+             java.io.InputStream input = new android.os.ParcelFileDescriptor.AutoCloseInputStream(result)) {
+            while (input.read() != -1) { /* Wait until the shell copy is complete. */ }
+        } catch (Exception e) { throw new AssertionError(e); }
     }
 
 }
