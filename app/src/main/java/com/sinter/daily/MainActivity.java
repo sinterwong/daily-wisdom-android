@@ -12,10 +12,10 @@ public class MainActivity extends Activity {
  @Override public void onResume(){super.onResume();render();handler.postDelayed(tick,30000);}
  @Override public void onPause(){handler.removeCallbacks(tick);super.onPause();}
  void render(){
-  current=Store.current(this);QuoteWidget.refresh(this);ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setBackgroundColor(0xfff3eee6);body=new LinearLayout(this);body.setOrientation(1);body.setPadding(dp(24),dp(24),dp(24),dp(32));scroll.addView(body);setContentView(scroll);
+  current=Store.current(this);QuoteWidget.refresh(this);ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setBackgroundColor(0xfff3eee6);body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(24),dp(24),dp(24),dp(32));scroll.addView(body);setContentView(scroll);
   if(Build.VERSION.SDK_INT>=35)scroll.setOnApplyWindowInsetsListener((v,in)->{android.graphics.Insets bar=in.getInsets(WindowInsets.Type.systemBars());v.setPadding(bar.left,bar.top,bar.right,bar.bottom);return in;});
   TextView label=text("DAILY WISDOM  /  一日一句",12,purple);label.setLetterSpacing(.12f);body.addView(label);gap(body,12);TextView title=text("让一句话，陪你过一天。",26,ink);title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);body.addView(title);gap(body,8);body.addView(text("500 条人生建议 · 每天读一点，慢慢体会",13,muted));gap(body,28);
-  LinearLayout card=new LinearLayout(this);card.setOrientation(1);card.setPadding(dp(24),dp(24),dp(24),dp(24));card.setBackground(bg(cream,24));body.addView(card);
+  LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(24),dp(24),dp(24),dp(24));card.setBackground(bg(cream,24));body.addView(card);
   card.addView(text(Store.day().replace('-','.')+"  /  "+(Store.held(this)?"这一句，继续陪你":"今天的偶遇"),12,purple));gap(card,20);
   TextView quote=text(Store.quote(this,current).optString("text"),24,ink);quote.setTypeface(Typeface.create("serif",Typeface.NORMAL));quote.setTextIsSelectable(true);quote.setLineSpacing(dp(10),1.15f);card.addView(quote);gap(card,24);card.addView(text("《宝贵的人生建议》",13,purple));card.addView(text(Store.source(this,current),11,muted));gap(card,12);card.addView(text(String.format(Locale.CHINA,"%03d / 500",current+1),11,muted));gap(body,20);
   row(body,button("换一句",()->{Store.next(this);render();}),button(Store.favorite(this,current)?"♥ 已收藏":"♡ 收藏",()->{Store.toggle(this,current);render();}),button(Store.held(this)?"恢复更新":"让它停留",()->{Store.hold(this);render();}));gap(body,12);
