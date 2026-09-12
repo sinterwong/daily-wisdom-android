@@ -9,3 +9,6 @@ signing/
 *.apk
 *.idsig
 captures/
+release-assets/
+release-notes.md
+ci-apk/
