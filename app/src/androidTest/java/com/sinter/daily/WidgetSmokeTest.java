@@ -7,6 +7,8 @@ import android.app.Instrumentation;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import org.junit.Test;
+import org.junit.Before;
+import org.junit.After;
 import org.junit.runner.RunWith;
 import static org.junit.Assert.*;
 import android.appwidget.AppWidgetManager;
@@ -23,6 +25,9 @@ import android.widget.RemoteViews;
 @RunWith(AndroidJUnit4.class)
 public class WidgetSmokeTest {
     private Instrumentation getInstrumentation() { return InstrumentationRegistry.getInstrumentation(); }
+    @Before public void selectBuiltin() { Libraries.select(getInstrumentation().getTargetContext(),Libraries.BUILTIN); }
+    @After public void restoreBuiltin() { Libraries.select(getInstrumentation().getTargetContext(),Libraries.BUILTIN); }
+
     @Test public void testWidgetInflatesOnAndroid() throws Throwable {
         final Context c = getInstrumentation().getTargetContext();
         getInstrumentation().runOnMainSync(() -> {
@@ -59,6 +64,22 @@ public class WidgetSmokeTest {
         assertFalse(a.isFinishing());
         getInstrumentation().runOnMainSync(a::finish);
     }
+    @Test public void testLibrariesAreIndependentAndUpdatesKeepFavoriteIds() throws Exception {
+        Context c=getInstrumentation().getTargetContext();
+        QuoteLibrary a=QuoteLibrary.parse("{\"schemaVersion\":1,\"id\":\"test-a\",\"title\":\"A\",\"items\":[{\"id\":\"first\",\"text\":\"First\"},{\"id\":\"second\",\"text\":\"Second\"}]}");
+        QuoteLibrary b=QuoteLibrary.parse("{\"schemaVersion\":1,\"id\":\"test-b\",\"title\":\"B\",\"items\":[\"Other\"]}");
+        Store.prefsFor(c,a.id).edit().clear().commit();
+        Libraries.save(c,a);Store.toggle(c,0);int current=Store.current(c);
+        Libraries.save(c,b);assertEquals(0,Store.favorites(c).size());
+        Libraries.select(c,a.id);assertTrue(Store.favorite(c,0));assertEquals(current,Store.current(c));
+        QuoteLibrary updated=QuoteLibrary.parse("{\"schemaVersion\":1,\"id\":\"test-a\",\"title\":\"A updated\",\"items\":[{\"id\":\"second\",\"text\":\"Second\"},{\"id\":\"first\",\"text\":\"First updated\"}]}");
+        Libraries.save(c,updated);assertTrue(Store.favorite(c,1));assertFalse(Store.favorite(c,0));
+        assertEquals("A updated",Libraries.active(c).title);
+        QuoteLibrary exported=QuoteLibrary.parse(Libraries.exportJson(c));assertEquals(updated.id,exported.id);
+        Libraries.select(c,Libraries.BUILTIN);
+        assertFalse(Libraries.BUILTIN.equals(QuoteLibrary.parse(Libraries.exportJson(c)).id));
+    }
+
     private void captureWidget(Context c, int id, String filename) {
         Bundle size = new Bundle();
         size.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 180);

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "my-notes",
+  "title": "我的随手记",
+  "author": "我",
+  "items": [
+    { "id": "note-001", "text": "把今天最重要的一件事写下来。" },
+    { "id": "note-002", "text": "先记录观察，再区分事实与判断。", "source": "工作笔记" },
+    { "id": "note-003", "text": "给自己留一点不被安排的时间。", "source": "生活随想" }
+  ]
+}

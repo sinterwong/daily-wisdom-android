@@ -49,7 +49,7 @@ public class QuoteWidget extends AppWidgetProvider {
             views.setInt(R.id.quote, "setMaxLines", lines);
             views.setTextViewText(R.id.day_number, new SimpleDateFormat("dd", Locale.CHINA).format(new Date()));
             views.setTextViewText(R.id.month, new SimpleDateFormat("M月", Locale.CHINA).format(new Date()));
-            views.setTextViewText(R.id.source, "《宝贵的人生建议》 · 凯文·凯利" + (Store.held(c) ? " · 停留中" : ""));
+            views.setTextViewText(R.id.source, Libraries.active(c).title + (Store.source(c, quoteId).isEmpty() ? "" : " · " + Store.source(c, quoteId)) + (Store.held(c) ? " · 停留中" : ""));
             views.setTextViewText(R.id.fav, Store.favorite(c, quoteId) ? "♥ 已收藏" : "♡ 收藏");
             PendingIntent open = PendingIntent.getActivity(c, 0, new Intent(c, MainActivity.class),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
@@ -59,7 +59,7 @@ public class QuoteWidget extends AppWidgetProvider {
             views.setOnClickPendingIntent(R.id.next, action(c, NEXT, 1));
             // Capture the displayed quote: a tap around midnight must favorite what the user saw.
             PendingIntent favorite = PendingIntent.getBroadcast(c, 2,
-                    new Intent(c, QuoteWidget.class).setAction(FAV).putExtra("quoteId", quoteId),
+                    new Intent(c, QuoteWidget.class).setAction(FAV).putExtra("libraryId", Libraries.active(c).id).putExtra("quoteKey", Store.quote(c, quoteId).optString("id")),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             views.setOnClickPendingIntent(R.id.fav, favorite);
             return views;
@@ -86,8 +86,12 @@ public class QuoteWidget extends AppWidgetProvider {
             Store.next(c);
             refresh(c);
         } else if (FAV.equals(action)) {
-            int id = intent.getIntExtra("quoteId", -1);
-            if (id >= 0 && id < Store.data(c).length()) Store.toggle(c, id);
+            if (Libraries.active(c).id.equals(intent.getStringExtra("libraryId"))) {
+                String key = intent.getStringExtra("quoteKey");
+                for (int i=0;i<Store.data(c).length();i++) {
+                    if (Store.quote(c,i).optString("id").equals(key)) { Store.toggle(c,i); break; }
+                }
+            }
             refresh(c);
         } else if (TICK.equals(action) || Intent.ACTION_BOOT_COMPLETED.equals(action)
                 || Intent.ACTION_DATE_CHANGED.equals(action) || Intent.ACTION_TIME_CHANGED.equals(action)
