@@ -69,7 +69,9 @@ jobs:
           disable-animations: true
           script: |
             ./gradlew --no-daemon connectedDebugAndroidTest
-            adb shell am start -n com.sinter.daily/.MainActivity
+            adb pull /sdcard/Android/data/com.sinter.daily/files/widget-short.png app/build/reports/widget-short.png
+            adb pull /sdcard/Android/data/com.sinter.daily/files/widget-long.png app/build/reports/widget-long.png
+            adb shell am start -W -n com.sinter.daily/.MainActivity
             adb shell input keyevent 82
             adb shell screencap -p /sdcard/daily-wisdom.png
             adb pull /sdcard/daily-wisdom.png app/build/reports/daily-wisdom.png

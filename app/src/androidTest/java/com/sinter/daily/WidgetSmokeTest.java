@@ -3,27 +3,39 @@ package com.sinter.daily;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.test.InstrumentationTestCase;
+import android.app.Instrumentation;
+import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import static org.junit.Assert.*;
+import android.appwidget.AppWidgetManager;
+import android.os.Bundle;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import java.io.File;
+import java.io.FileOutputStream;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.RemoteViews;
 
 /** Device tests exercise real SharedPreferences and Android RemoteViews inflation. */
-public class WidgetSmokeTest extends InstrumentationTestCase {
-    public void testWidgetInflatesOnAndroid() throws Throwable {
+@RunWith(AndroidJUnit4.class)
+public class WidgetSmokeTest {
+    private Instrumentation getInstrumentation() { return InstrumentationRegistry.getInstrumentation(); }
+    @Test public void testWidgetInflatesOnAndroid() throws Throwable {
         final Context c = getInstrumentation().getTargetContext();
-        runTestOnUiThread(() -> {
-            RemoteViews views = new RemoteViews(c.getPackageName(), R.layout.widget);
-            views.setTextViewText(R.id.quote, Store.quote(c, 0).optString("text"));
-            views.setTextViewText(R.id.day_number, "12");
-            views.setTextViewText(R.id.month, "9月");
-            View widget = views.apply(c, new FrameLayout(c));
-            assertNotNull(widget.findViewById(R.id.quote));
-            assertNotNull(widget.findViewById(R.id.day_number));
+        getInstrumentation().runOnMainSync(() -> {
+            int longest = 0;
+            for (int i = 1; i < Store.data(c).length(); i++) {
+                if (Store.quote(c,i).optString("text").length() > Store.quote(c,longest).optString("text").length()) longest = i;
+            }
+            captureWidget(c, 0, "widget-short.png");
+            captureWidget(c, longest, "widget-long.png");
         });
     }
 
-    public void testRealPreferencesAndDateTransition() {
+    @Test public void testRealPreferencesAndDateTransition() {
         Context c = getInstrumentation().getTargetContext();
         Store.prefs(c).edit().clear().commit();
         int first = Store.current(c);
@@ -39,12 +51,32 @@ public class WidgetSmokeTest extends InstrumentationTestCase {
         assertTrue(Store.favorite(c, first));
     }
 
-    public void testMainActivityLaunches() throws Throwable {
+    @Test public void testMainActivityLaunches() throws Throwable {
         Context c = getInstrumentation().getTargetContext();
         Activity a = getInstrumentation().startActivitySync(
                 new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         assertNotNull(a);
         assertFalse(a.isFinishing());
-        runTestOnUiThread(a::finish);
+        getInstrumentation().runOnMainSync(a::finish);
     }
+    private void captureWidget(Context c, int id, String filename) {
+        Bundle size = new Bundle();
+        size.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 180);
+        RemoteViews views = QuoteWidget.buildViews(c, id, size);
+        View widget = views.apply(c, new FrameLayout(c));
+        assertNotNull(widget.findViewById(R.id.quote));
+        assertNotNull(widget.findViewById(R.id.day_number));
+        float density = c.getResources().getDisplayMetrics().density;
+        int width = (int)(360 * density), height = (int)(180 * density);
+        widget.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(height,View.MeasureSpec.EXACTLY));
+        widget.layout(0,0,width,height);
+        Bitmap bitmap = Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
+        widget.draw(new Canvas(bitmap));
+        try (FileOutputStream output = new FileOutputStream(new File(c.getExternalFilesDir(null),filename))) {
+            assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG,100,output));
+        } catch (Exception e) { throw new AssertionError(e); }
+        bitmap.recycle();
+    }
+
 }

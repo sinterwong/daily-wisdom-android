@@ -32,9 +32,14 @@ public class QuoteWidget extends AppWidgetProvider {
         if (ids.length == 0) return;
         int quoteId = Store.current(c);
         for (int widgetId : ids) {
+            manager.updateAppWidget(widgetId, buildViews(c, quoteId, manager.getAppWidgetOptions(widgetId)));
+        }
+        schedule(c);
+    }
+
+    static RemoteViews buildViews(Context c, int quoteId, Bundle size) {
             RemoteViews views = new RemoteViews(c.getPackageName(), R.layout.widget);
             String text = Store.quote(c, quoteId).optString("text");
-            Bundle size = manager.getAppWidgetOptions(widgetId);
             int height = size.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 140);
             int font = text.length() > 90 ? 16 : 19;
             float fontScale = c.getResources().getConfiguration().fontScale;
@@ -57,9 +62,7 @@ public class QuoteWidget extends AppWidgetProvider {
                     new Intent(c, QuoteWidget.class).setAction(FAV).putExtra("quoteId", quoteId),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             views.setOnClickPendingIntent(R.id.fav, favorite);
-            manager.updateAppWidget(widgetId, views);
-        }
-        schedule(c);
+            return views;
     }
 
     static void schedule(Context c) {
