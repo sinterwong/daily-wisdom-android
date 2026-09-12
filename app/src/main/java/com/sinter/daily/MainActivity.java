@@ -71,7 +71,7 @@ public class MainActivity extends Activity {
         LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(24),dp(24),dp(24),dp(24));card.setBackground(background(cream,24));body.addView(card);
         card.addView(text(Store.day().replace('-','.')+"  /  "+(Store.held(this)?"这一句，继续陪你":"今天的偶遇"),12,purple));gap(card,20);
-        String content=Store.quote(this,current).optString("text");
+        String content=current<0?"句库还是空的，点击「管理内容」添加第一条。":Store.quote(this,current).optString("text");
         TextView quote=text(content,content.length()>300?19:24,ink);quote.setTypeface(Typeface.create("serif",Typeface.NORMAL));
         quote.setTextIsSelectable(true);quote.setLineSpacing(dp(10),1.15f);card.addView(quote);gap(card,24);
         card.addView(text(library.title,13,purple));
@@ -80,6 +80,7 @@ public class MainActivity extends Activity {
         row(body,button("换一句",()->{Store.next(this);render();}),
                 button(Store.favorite(this,current)?"♥ 已收藏":"♡ 收藏",()->{Store.toggle(this,current);render();}),
                 button(Store.held(this)?"恢复更新":"让它停留",()->{Store.hold(this);render();}));gap(body,12);
+        body.addView(button("管理内容 · 浏览 / 新增 / 编辑",()->startActivity(new Intent(this,LibraryActivity.class))));gap(body,12);
         body.addView(button("＋ 放到手机桌面",this::pin));gap(body,8);
         body.addView(button("从系统小组件添加",this::widgetHelp));gap(body,12);
         row(body,button("我的收藏 · "+Store.favorites(this).size(),this::favorites),button("切换句库",this::chooseLibrary));gap(body,12);
@@ -178,7 +179,7 @@ public class MainActivity extends Activity {
     }
     private void previewImport(QuoteLibrary library) {
         boolean replacing=Libraries.exists(this,library.id);
-        String sample=library.items.optJSONObject(0).optString("text");
+        String sample=library.items.length()==0?"这是一个空句库，可在「管理内容」中新增条目。":library.items.optJSONObject(0).optString("text");
         if (sample.length()>180) sample=sample.substring(0,180)+"…";
         String note=replacing?"同 id 句库将被更新；保留仍存在的内容的收藏，重新开始阅读顺序。":"将添加新句库，不影响其他句库的收藏和进度。";
         new AlertDialog.Builder(this).setTitle(library.title+" · "+library.items.length()+" 条")

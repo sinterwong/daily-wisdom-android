@@ -108,6 +108,55 @@ public class WidgetSmokeTest {
         assertFalse(Libraries.BUILTIN.equals(QuoteLibrary.parse(Libraries.exportJson(c)).id));
     }
 
+    @Test public void testCrudPreservesStateAndEmptyLibraryWorks() throws Exception {
+        Context c=getInstrumentation().getTargetContext();
+        QuoteLibrary before=QuoteLibrary.parse("{\"schemaVersion\":1,\"id\":\"crud-test\",\"title\":\"CRUD\",\"items\":[{\"id\":\"a\",\"text\":\"A\"},{\"id\":\"b\",\"text\":\"B\"}]}");
+        Libraries.save(c,before);
+        Store.prefs(c).edit().putInt("current",1).putString("queue","0").putString("day",Store.day()).putBoolean("hold",true).commit();
+        Store.toggle(c,1);
+        QuoteLibrary edited=LibraryEdits.change(before,"b",new org.json.JSONObject().put("text","Edited B").put("author","Me"));
+        Libraries.saveEdited(c,before,edited);
+        assertEquals(1,Store.current(c));assertTrue(Store.held(c));assertTrue(Store.favorite(c,1));
+        assertEquals("Edited B",Store.quote(c,Store.current(c)).optString("text"));
+        QuoteLibrary deleted=LibraryEdits.change(edited,"a",null);Libraries.saveEdited(c,edited,deleted);
+        assertEquals(0,Store.current(c));assertTrue(Store.favorite(c,0));assertTrue(Store.held(c));
+        Libraries.select(c,Libraries.BUILTIN);Libraries.select(c,"crud-test");
+        assertEquals("Edited B",Libraries.active(c).items.optJSONObject(0).optString("text"));
+        QuoteLibrary empty=LibraryEdits.change(deleted,"b",null);Libraries.saveEdited(c,deleted,empty);
+        assertEquals(-1,Store.current(c));assertEquals(-1,Store.next(c));assertTrue(Store.favorites(c).isEmpty());
+        assertEquals(0,QuoteLibrary.parse(Libraries.exportJson(c)).items.length());
+        getInstrumentation().runOnMainSync(()->{
+            View widget=QuoteWidget.buildViews(c,Store.current(c),new Bundle()).apply(c,new FrameLayout(c));
+            assertTrue(((android.widget.TextView)widget.findViewById(R.id.quote)).getText().toString().contains("暂无内容"));
+        });
+        Activity a=getInstrumentation().startActivitySync(new Intent(c,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        getInstrumentation().runOnMainSync(a::finish);
+        QuoteLibrary added=LibraryEdits.change(empty,null,new org.json.JSONObject().put("text","New"));
+        Libraries.saveEdited(c,empty,added);assertEquals("New",Store.quote(c,Store.current(c)).optString("text"));
+    }
+
+    @Test public void testContentManagerLaunchesAndSearchesImportedItems() throws Exception {
+        Context c=getInstrumentation().getTargetContext();
+        Libraries.save(c,QuoteLibrary.parse("{\"schemaVersion\":1,\"id\":\"browse-test\",\"title\":\"Browse\",\"items\":[\"Alpha\",\"Beta\"]}"));
+        Activity a=getInstrumentation().startActivitySync(new Intent(c,LibraryActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        getInstrumentation().runOnMainSync(()->{
+            android.widget.ListView list=findView(a.getWindow().getDecorView(),android.widget.ListView.class);
+            android.widget.EditText search=findView(a.getWindow().getDecorView(),android.widget.EditText.class);
+            assertNotNull(list);assertNotNull(search);assertEquals(2,list.getAdapter().getCount());
+            search.setText("Beta");assertEquals(1,list.getAdapter().getCount());
+            assertTrue(list.getAdapter().getItem(0).toString().contains("Beta"));
+            search.setText("No match");assertEquals(0,list.getAdapter().getCount());a.finish();
+        });
+    }
+    private <T extends View> T findView(View root,Class<T> type) {
+        if (type.isInstance(root)) return type.cast(root);
+        if (root instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group=(android.view.ViewGroup)root;
+            for (int i=0;i<group.getChildCount();i++) { T found=findView(group.getChildAt(i),type);if (found!=null) return found; }
+        }
+        return null;
+    }
+
     private void captureWidget(Context c, int id, String filename) {
         Bundle size = new Bundle();
         size.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 180);

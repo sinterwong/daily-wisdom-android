@@ -40,7 +40,7 @@ public class QuoteWidget extends AppWidgetProvider {
 
     static RemoteViews buildViews(Context c, int quoteId, Bundle size) {
             RemoteViews views = new RemoteViews(c.getPackageName(), R.layout.widget);
-            String text = Store.quote(c, quoteId).optString("text");
+            String text = quoteId<0?"句库暂无内容，点开应用添加第一条。":Store.quote(c, quoteId).optString("text");
             int height = size.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 140);
             int font = text.length() > 90 ? 16 : 19;
             float fontScale = c.getResources().getConfiguration().fontScale;

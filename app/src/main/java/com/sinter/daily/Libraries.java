@@ -76,6 +76,35 @@ final class Libraries {
         p.edit().clear().putStringSet("favoriteIds",kept).commit();
         select(c,library.id);
     }
+    static synchronized void saveEdited(Context c, QuoteLibrary previous, QuoteLibrary changed) throws IOException {
+        if (!previous.id.equals(changed.id)) throw new IOException("句库 id 不可更改");
+        android.content.SharedPreferences p=Store.prefsFor(c,previous.id);
+        int current=p.getInt("current",-1);
+        String currentKey=current>=0&&current<previous.items.length()?previous.items.optJSONObject(current).optString("id"):"";
+        Map<String,Integer> positions=new HashMap<>();
+        Set<String> oldKeys=new HashSet<>();
+        for (int i=0;i<changed.items.length();i++) positions.put(changed.items.optJSONObject(i).optString("id"),i);
+        for (int i=0;i<previous.items.length();i++) oldKeys.add(previous.items.optJSONObject(i).optString("id"));
+        List<Integer> queue=new ArrayList<>();
+        for (String value:p.getString("queue","").split(",")) try {
+            int old=Integer.parseInt(value);
+            if (old>=0 && old<previous.items.length()) {
+                Integer mapped=positions.get(previous.items.optJSONObject(old).optString("id"));
+                if (mapped!=null && !queue.contains(mapped)) queue.add(mapped);
+            }
+        } catch (NumberFormatException ignored) { }
+        for (int i=0;i<changed.items.length();i++)
+            if (!oldKeys.contains(changed.items.optJSONObject(i).optString("id"))) queue.add(i);
+        String day=p.getString("day","");
+        boolean hold=p.getBoolean("hold",false);
+        Integer mapped=positions.get(currentKey);
+        StringBuilder remaining=new StringBuilder();
+        for (int index:queue) { if (remaining.length()>0) remaining.append(','); remaining.append(index); }
+        save(c,changed);
+        p.edit().putInt("current",mapped==null?-1:mapped).putString("queue",remaining.toString())
+                .putString("day",day).putBoolean("hold",mapped!=null&&hold).commit();
+        QuoteWidget.refresh(c);
+    }
     static String exportJson(Context c) {
         try {
             JSONObject copy = new JSONObject(active(c).json.toString());

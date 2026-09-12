@@ -28,7 +28,7 @@ public class QuoteLibraryTest {
     }
     @Test(expected=JSONException.class) public void duplicateIdsRejected() throws Exception { QuoteLibrary.parse(library("[{\"id\":\"a\",\"text\":\"甲\"},{\"id\":\"a\",\"text\":\"乙\"}]")); }
     @Test(expected=JSONException.class) public void emptyTextRejected() throws Exception { QuoteLibrary.parse(library("[\"  \"]")); }
-    @Test(expected=JSONException.class) public void emptyLibraryRejected() throws Exception { QuoteLibrary.parse(library("[]")); }
+    @Test public void emptyLibraryAccepted() throws Exception { assertEquals(0,QuoteLibrary.parse(library("[]")).items.length()); }
     @Test(expected=JSONException.class) public void pathIdRejected() throws Exception { QuoteLibrary.parse(library("[\"甲\"]").replace("\"notes\"","\"../other\"")); }
     @Test(expected=JSONException.class) public void unknownVersionRejected() throws Exception { QuoteLibrary.parse(library("[\"甲\"]").replace(":1",":2")); }
     @Test(expected=JSONException.class) public void extraContentRejected() throws Exception { QuoteLibrary.parse(library("[\"甲\"]")+"{}"); }

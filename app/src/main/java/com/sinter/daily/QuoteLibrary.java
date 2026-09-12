@@ -45,8 +45,8 @@ final class QuoteLibrary {
         if (!id.matches("[A-Za-z0-9][A-Za-z0-9._-]{0,79}")) throw invalid("句库 id 只能包含英文、数字、点、横线和下划线");
         String title = required(root, "title", 100);
         JSONArray inputItems = root.optJSONArray("items");
-        if (inputItems == null || inputItems.length() == 0 || inputItems.length() > MAX_ITEMS)
-            throw invalid("items 必须包含 1～10000 条内容");
+        if (inputItems == null || inputItems.length() > MAX_ITEMS)
+            throw invalid("items 必须是数组，最多包含 10000 条内容");
         JSONObject normalized = new JSONObject().put("schemaVersion", 1).put("id", id).put("title", title);
         copyText(root, normalized, "author", 200);
         copyText(root, normalized, "source", 500);
