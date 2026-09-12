@@ -43,7 +43,8 @@ public class QuoteWidget extends AppWidgetProvider {
             int height = size.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 140);
             int font = text.length() > 90 ? 16 : 19;
             float fontScale = c.getResources().getConfiguration().fontScale;
-            int lines = Math.max(1, Math.min(16, (int)((height - 80) / (font * fontScale + 4))));
+            // Reserve CJK fallback-font ascent/descent, not just the nominal text size.
+            int lines = Math.max(1, Math.min(16, (int)((height - 80) / (font * fontScale * 1.6f + 4))));
             views.setTextViewText(R.id.quote, text);
             views.setTextViewTextSize(R.id.quote, TypedValue.COMPLEX_UNIT_SP, font);
             views.setInt(R.id.quote, "setMaxLines", lines);

@@ -92,6 +92,13 @@ public class WidgetSmokeTest {
         widget.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(height,View.MeasureSpec.EXACTLY));
         widget.layout(0,0,width,height);
+        android.widget.TextView quoteView = widget.findViewById(R.id.quote);
+        android.text.Layout layout = quoteView.getLayout();
+        int lastLine = Math.min(layout.getLineCount(),quoteView.getMaxLines()) - 1;
+        assertTrue("The last displayed line must fit completely",
+                layout.getLineBottom(lastLine) <= quoteView.getHeight());
+        if (filename.equals("widget-long.png")) assertTrue("Long content must end with an ellipsis",
+                layout.getEllipsisCount(lastLine) > 0);
         Bitmap bitmap = Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
         widget.draw(new Canvas(bitmap));
         try (FileOutputStream output = new FileOutputStream(new File(c.getExternalFilesDir(null),filename))) {
