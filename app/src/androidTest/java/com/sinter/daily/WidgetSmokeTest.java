@@ -225,7 +225,7 @@ public class WidgetSmokeTest {
                 for (int i=0;i<lines-1;i++) assertEquals("Never ellipsize an earlier line",0,text.getLayout().getEllipsisCount(i));
                 assertTrue("Only the final visible line may ellipsize",text.getLayout().getEllipsisCount(lines-1)>0);
                 assertTrue(text.getLayout().getLineBottom(lines-1)<=text.getHeight());
-                text.setMaxLines(Integer.MAX_VALUE);text.setEllipsize(null);
+                text.setMaxLines(lines+1);text.setEllipsize(android.text.TextUtils.TruncateAt.END);
                 widget.measure(View.MeasureSpec.makeMeasureSpec(pixels,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(pixels,View.MeasureSpec.EXACTLY));
                 widget.layout(0,0,pixels,pixels);
                 assertTrue("Another complete line must genuinely not fit",text.getLayout().getLineBottom(lines)>text.getHeight());

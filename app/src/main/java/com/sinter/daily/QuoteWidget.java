@@ -137,11 +137,10 @@ public class QuoteWidget extends AppWidgetProvider {
         int width=Math.max(1,Math.round(widthDp*density)),height=Math.max(1,Math.round(heightDp*density));
         float font=fontSize(c);
         int lines=1;
-        for (int attempt=0;attempt<4;attempt++) {
+        for (int attempt=0;attempt<6;attempt++) {
+            quote.setMaxLines(Integer.MAX_VALUE);quote.setEllipsize(null);
             quote.setTextSize(TypedValue.COMPLEX_UNIT_SP,font);
-            preview.measure(android.view.View.MeasureSpec.makeMeasureSpec(width,android.view.View.MeasureSpec.EXACTLY),
-                    android.view.View.MeasureSpec.makeMeasureSpec(height,android.view.View.MeasureSpec.EXACTLY));
-            preview.layout(0,0,width,height);
+            measurePreview(preview,width,height);
             android.text.Layout layout=quote.getLayout();
             int available=quote.getHeight()-quote.getCompoundPaddingTop()-quote.getCompoundPaddingBottom();
             lines=0;
@@ -149,11 +148,29 @@ public class QuoteWidget extends AppWidgetProvider {
                 if (layout.getLineBottom(i)>available) break;
                 lines++;
             }
+            if (lines>0) {
+                // Ellipsizing changes final-line font padding. Check the actual final layout too.
+                quote.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                while (lines>0) {
+                    quote.setMaxLines(lines);measurePreview(preview,width,height);
+                    layout=quote.getLayout();
+                    int last=Math.min(lines,layout.getLineCount())-1;
+                    if (layout.getLineBottom(last)<=available) break;
+                    if (lines==1) { lines=0;break; }
+                    lines--;
+                }
+            }
             if (lines>0 || font<=1) break;
             font=Math.max(1,font*Math.max(1,available)/Math.max(1,layout.getLineBottom(0))*.95f);
         }
         views.setTextViewTextSize(R.id.quote,TypedValue.COMPLEX_UNIT_SP,font);
         views.setInt(R.id.quote,"setMaxLines",Math.max(1,lines));
+    }
+
+    private static void measurePreview(android.view.View preview,int width,int height) {
+        preview.measure(android.view.View.MeasureSpec.makeMeasureSpec(width,android.view.View.MeasureSpec.EXACTLY),
+                android.view.View.MeasureSpec.makeMeasureSpec(height,android.view.View.MeasureSpec.EXACTLY));
+        preview.layout(0,0,width,height);
     }
 
     static void schedule(Context c) {
