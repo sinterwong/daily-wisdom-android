@@ -234,6 +234,33 @@ public class WidgetSmokeTest {
         } finally { QuoteWidget.setFontSize(c,previous); }
     }
 
+    @Test public void testPortraitUsesFullHeightInsteadOfLandscapeMinimum() throws Exception {
+        Context c=getInstrumentation().getTargetContext();
+        Libraries.save(c,QuoteLibrary.parse("{\"schemaVersion\":1,\"id\":\"orientation-wrap\",\"title\":\"尺寸测试\",\"items\":[\"第一行放不下就接着第二行，第二行放不下就接着第三行，剩余内容才显示省略号。第一行放不下就接着第二行。\"]}"));
+        int previous=QuoteWidget.fontSize(c);QuoteWidget.setFontSize(c,20);
+        try {
+            getInstrumentation().runOnMainSync(()->{
+                android.content.res.Configuration config=new android.content.res.Configuration(c.getResources().getConfiguration());
+                config.orientation=android.content.res.Configuration.ORIENTATION_PORTRAIT;
+                Context portrait=c.createConfigurationContext(config);
+                Bundle options=new Bundle();
+                options.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH,140);
+                options.putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH,300);
+                options.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,55);
+                options.putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT,140);
+                View widget=QuoteWidget.buildForOptions(portrait,0,options).apply(portrait,new FrameLayout(portrait));
+                assertTrue(((android.widget.TextView)widget.findViewById(R.id.quote)).getMaxLines()>=3);
+                java.util.ArrayList<android.util.SizeF> sizes=new java.util.ArrayList<>();
+                sizes.add(new android.util.SizeF(140,140));sizes.add(new android.util.SizeF(300,55));
+                options.putParcelableArrayList(AppWidgetManager.OPTION_APPWIDGET_SIZES,sizes);
+                RemoteViews exact=QuoteWidget.buildForOptions(c,0,options);
+                android.os.Parcel parcel=android.os.Parcel.obtain();
+                try { exact.writeToParcel(parcel,0);assertTrue(parcel.dataSize()>0); }
+                finally { parcel.recycle(); }
+            });
+        } finally { QuoteWidget.setFontSize(c,previous); }
+    }
+
     @Test public void testWidgetThemesHaveCorrectBackgroundAndText() {
         Context c=getInstrumentation().getTargetContext();int previous=QuoteWidget.theme(c);
         try {

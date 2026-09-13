@@ -63,9 +63,34 @@ public class QuoteWidget extends AppWidgetProvider {
         if (ids.length == 0) return;
         int quoteId = Store.current(c);
         for (int widgetId : ids) {
-            manager.updateAppWidget(widgetId, buildViews(c, quoteId, manager.getAppWidgetOptions(widgetId)));
+            manager.updateAppWidget(widgetId, buildForOptions(c, quoteId, manager.getAppWidgetOptions(widgetId)));
         }
         schedule(c);
+    }
+
+    static RemoteViews buildForOptions(Context c,int quoteId,Bundle options) {
+        if (android.os.Build.VERSION.SDK_INT>=31) {
+            java.util.ArrayList<android.util.SizeF> sizes=options.getParcelableArrayList(AppWidgetManager.OPTION_APPWIDGET_SIZES);
+            if (sizes!=null && !sizes.isEmpty()) {
+                java.util.Map<android.util.SizeF,RemoteViews> layouts=new java.util.LinkedHashMap<>();
+                for (android.util.SizeF size:sizes) {
+                    if (size.getWidth()<=0 || size.getHeight()<=0) continue;
+                    Bundle exact=new Bundle();
+                    exact.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH,(int)size.getWidth());
+                    exact.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,(int)size.getHeight());
+                    layouts.put(size,buildViews(c,quoteId,exact));
+                    if (layouts.size()==16) break;
+                }
+                if (!layouts.isEmpty()) return new RemoteViews(layouts);
+            }
+        }
+        // Legacy ranges describe two orientations, not one minimum-width/minimum-height rectangle.
+        Bundle portrait=new Bundle(options),landscape=new Bundle(options);
+        portrait.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,
+                options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT,options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,140)));
+        landscape.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH,
+                options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH,options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH,180)));
+        return new RemoteViews(buildViews(c,quoteId,landscape),buildViews(c,quoteId,portrait));
     }
 
     static RemoteViews buildViews(Context c, int quoteId, Bundle size) {
