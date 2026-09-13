@@ -208,6 +208,85 @@ public class WidgetSmokeTest {
         });
     }
 
+    @Test public void testWrappingUsesAvailableLinesBeforeEllipsis() throws Exception {
+        Context c=getInstrumentation().getTargetContext();
+        Libraries.save(c,QuoteLibrary.parse("{\"schemaVersion\":1,\"id\":\"wrap-test\",\"title\":\"换行测试\",\"items\":[\"这是一段专门用来检查换行的文字。第一行放不下就接着第二行，第二行放不下就接着第三行，剩余内容才显示省略号。\"]}"));
+        int previous=QuoteWidget.fontSize(c);QuoteWidget.setFontSize(c,20);
+        try {
+            getInstrumentation().runOnMainSync(()->{
+                Bundle size=new Bundle();size.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH,140);size.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,140);
+                View widget=QuoteWidget.buildViews(c,0,size).apply(c,new FrameLayout(c));
+                int pixels=Math.round(140*c.getResources().getDisplayMetrics().density);
+                widget.measure(View.MeasureSpec.makeMeasureSpec(pixels,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(pixels,View.MeasureSpec.EXACTLY));
+                widget.layout(0,0,pixels,pixels);
+                android.widget.TextView text=widget.findViewById(R.id.quote);
+                int lines=text.getMaxLines();
+                assertTrue("Available space must allow at least three full lines",lines>=3);
+                for (int i=0;i<lines-1;i++) assertEquals("Never ellipsize an earlier line",0,text.getLayout().getEllipsisCount(i));
+                assertTrue("Only the final visible line may ellipsize",text.getLayout().getEllipsisCount(lines-1)>0);
+                assertTrue(text.getLayout().getLineBottom(lines-1)<=text.getHeight());
+                text.setMaxLines(Integer.MAX_VALUE);text.setEllipsize(null);
+                widget.measure(View.MeasureSpec.makeMeasureSpec(pixels,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(pixels,View.MeasureSpec.EXACTLY));
+                widget.layout(0,0,pixels,pixels);
+                assertTrue("Another complete line must genuinely not fit",text.getLayout().getLineBottom(lines)>text.getHeight());
+                captureWidget(c,0,"widget-wrap.png",140,140);
+            });
+        } finally { QuoteWidget.setFontSize(c,previous); }
+    }
+
+    @Test public void testWidgetThemesHaveCorrectBackgroundAndText() {
+        Context c=getInstrumentation().getTargetContext();int previous=QuoteWidget.theme(c);
+        try {
+            for (int theme=0;theme<4;theme++) {
+                final int selected=theme;QuoteWidget.setTheme(c,selected);
+                getInstrumentation().runOnMainSync(()->{
+                    View widget=QuoteWidget.buildViews(c,Store.current(c),new Bundle()).apply(c,new FrameLayout(c));
+                    Bitmap background=Bitmap.createBitmap(100,100,Bitmap.Config.ARGB_8888);
+                    widget.getBackground().setBounds(0,0,100,100);widget.getBackground().draw(new Canvas(background));
+                    assertEquals(selected>=2?0:255,android.graphics.Color.alpha(background.getPixel(50,50)));
+                    android.widget.TextView text=widget.findViewById(R.id.quote);
+                    assertEquals(selected==1||selected==3?0xff25232a:0xfffff9f0,text.getCurrentTextColor());
+                    background.recycle();
+                    captureWidget(c,0,"widget-theme-"+selected+".png",180,140);
+                });
+            }
+        } finally { QuoteWidget.setTheme(c,previous); }
+    }
+
+    @Test public void testHomeDeleteAdvancesAndHandlesLastItem() throws Exception {
+        Context c=getInstrumentation().getTargetContext();
+        Libraries.save(c,QuoteLibrary.parse("{\"schemaVersion\":1,\"id\":\"home-delete\",\"title\":\"首页删除\",\"items\":[\"第一条\",\"第二条\"]}"));
+        Store.prefs(c).edit().clear().putInt("current",0).putString("queue","1").putString("day",Store.day()).putBoolean("hold",true).commit();
+        Store.toggle(c,0);
+        Activity a=getInstrumentation().startActivitySync(new Intent(c,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        try {
+            getInstrumentation().runOnMainSync(()->a.findViewById(R.id.delete_current).performClick());
+            clickDialogButton("取消");assertEquals(2,Store.data(c).length());
+            getInstrumentation().runOnMainSync(()->a.findViewById(R.id.delete_current).performClick());
+            clickDialogButton("删除");
+            assertEquals(1,Store.data(c).length());assertEquals("第二条",Store.quote(c,Store.current(c)).optString("text"));
+            assertTrue(Store.favorites(c).isEmpty());assertFalse(Store.held(c));
+            getInstrumentation().runOnMainSync(()->a.findViewById(R.id.delete_current).performClick());
+            clickDialogButton("删除");assertEquals(-1,Store.current(c));
+            getInstrumentation().runOnMainSync(()->assertFalse(a.findViewById(R.id.delete_current).isEnabled()));
+        } finally { getInstrumentation().runOnMainSync(a::finish); }
+    }
+
+    private void clickDialogButton(String label) throws Exception {
+        getInstrumentation().waitForIdleSync();
+        getInstrumentation().getUiAutomation().waitForIdle(100,5000);
+        android.view.accessibility.AccessibilityNodeInfo root=getInstrumentation().getUiAutomation().getRootInActiveWindow();
+        assertNotNull(root);
+        boolean clicked=false;
+        for (android.view.accessibility.AccessibilityNodeInfo node:root.findAccessibilityNodeInfosByText(label)) {
+            if (label.contentEquals(node.getText()==null?"":node.getText()) && "android.widget.Button".contentEquals(node.getClassName())) {
+                clicked=node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK);break;
+            }
+        }
+        assertTrue("Dialog button must be clickable: "+label,clicked);
+        getInstrumentation().waitForIdleSync();
+    }
+
     private void captureWidget(Context c, int id, String filename) { captureWidget(c,id,filename,360,180); }
     private void captureWidget(Context c, int id, String filename,int widthDp,int heightDp) {
         Bundle size = new Bundle();

@@ -29,6 +29,28 @@ public class QuoteWidget extends AppWidgetProvider {
         refresh(c);
     }
 
+    static int theme(Context c) {
+        return Math.max(0,Math.min(3,c.getSharedPreferences("widget-style",0).getInt("theme",0)));
+    }
+    static void setTheme(Context c,int value) {
+        c.getSharedPreferences("widget-style",0).edit().putInt("theme",Math.max(0,Math.min(3,value))).commit();
+        refresh(c);
+    }
+    static String themeName(Context c) {
+        return new String[]{"黑色","浅色","透明 · 浅色文字","透明 · 深色文字"}[theme(c)];
+    }
+    private static void applyTheme(Context c,RemoteViews views) {
+        int theme=theme(c);
+        boolean darkText=theme==1 || theme==3;
+        views.setInt(R.id.card,"setBackgroundResource",theme==0?R.drawable.card:theme==1?R.drawable.card_light:R.drawable.card_transparent);
+        views.setInt(R.id.date_box,"setBackgroundResource",darkText?R.drawable.date_frame_light:R.drawable.date_frame);
+        int primary=darkText?0xff25232a:0xfffff9f0;
+        int secondary=darkText?0xff655c6e:0xffd5cddb;
+        for (int id:new int[]{R.id.quote,R.id.day_number}) views.setTextColor(id,primary);
+        for (int id:new int[]{R.id.month,R.id.source}) views.setTextColor(id,secondary);
+        for (int id:new int[]{R.id.open,R.id.fav,R.id.next}) views.setTextColor(id,darkText?0xff644375:0xffd6c2e6);
+    }
+
     static PendingIntent action(Context c, String action, int code) {
         return PendingIntent.getBroadcast(c, code,
                 new Intent(c, QuoteWidget.class).setAction(action),
@@ -58,16 +80,14 @@ public class QuoteWidget extends AppWidgetProvider {
             views.setViewVisibility(R.id.actions,actions?android.view.View.VISIBLE:android.view.View.GONE);
             views.setViewVisibility(R.id.source,source?android.view.View.VISIBLE:android.view.View.GONE);
             views.setViewVisibility(R.id.date_box,date?android.view.View.VISIBLE:android.view.View.GONE);
-            float available=Math.max(1,height-16-(actions?32:0)-(source?(int)Math.ceil(16*fontScale)+7:0));
-            float font=Math.max(1,Math.min(fontSize(c),(available-4)/(1.6f*fontScale)));
-            int lines=Math.max(1,Math.min(32,(int)(available/(font*fontScale*1.6f+4))));
             views.setTextViewText(R.id.quote, text);
-            views.setTextViewTextSize(R.id.quote, TypedValue.COMPLEX_UNIT_SP, font);
-            views.setInt(R.id.quote, "setMaxLines", lines);
+            views.setTextViewTextSize(R.id.quote, TypedValue.COMPLEX_UNIT_SP, fontSize(c));
             views.setTextViewText(R.id.day_number, new SimpleDateFormat("dd", Locale.CHINA).format(new Date()));
             views.setTextViewText(R.id.month, new SimpleDateFormat("M月", Locale.CHINA).format(new Date()));
             views.setTextViewText(R.id.source, Libraries.active(c).title + (Store.source(c, quoteId).isEmpty() ? "" : " · " + Store.source(c, quoteId)) + (Store.held(c) ? " · 停留中" : ""));
             views.setTextViewText(R.id.fav, Store.favorite(c, quoteId) ? "♥ 已收藏" : "♡ 收藏");
+            applyTheme(c,views);
+            fitText(c,views,width,height);
             PendingIntent open = PendingIntent.getActivity(c, 0, new Intent(c, MainActivity.class),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             views.setOnClickPendingIntent(R.id.quote, open);
@@ -80,6 +100,35 @@ public class QuoteWidget extends AppWidgetProvider {
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             views.setOnClickPendingIntent(R.id.fav, favorite);
             return views;
+    }
+
+    /** Measure Android's actual wrapped lines, including fallback fonts and system font scaling. */
+    private static void fitText(Context c,RemoteViews views,int widthDp,int heightDp) {
+        android.view.View preview=views.apply(c,new android.widget.FrameLayout(c));
+        android.widget.TextView quote=preview.findViewById(R.id.quote);
+        quote.setMaxLines(Integer.MAX_VALUE);
+        quote.setEllipsize(null);
+        float density=c.getResources().getDisplayMetrics().density;
+        int width=Math.max(1,Math.round(widthDp*density)),height=Math.max(1,Math.round(heightDp*density));
+        float font=fontSize(c);
+        int lines=1;
+        for (int attempt=0;attempt<4;attempt++) {
+            quote.setTextSize(TypedValue.COMPLEX_UNIT_SP,font);
+            preview.measure(android.view.View.MeasureSpec.makeMeasureSpec(width,android.view.View.MeasureSpec.EXACTLY),
+                    android.view.View.MeasureSpec.makeMeasureSpec(height,android.view.View.MeasureSpec.EXACTLY));
+            preview.layout(0,0,width,height);
+            android.text.Layout layout=quote.getLayout();
+            int available=quote.getHeight()-quote.getCompoundPaddingTop()-quote.getCompoundPaddingBottom();
+            lines=0;
+            for (int i=0;i<layout.getLineCount();i++) {
+                if (layout.getLineBottom(i)>available) break;
+                lines++;
+            }
+            if (lines>0 || font<=1) break;
+            font=Math.max(1,font*Math.max(1,available)/Math.max(1,layout.getLineBottom(0))*.95f);
+        }
+        views.setTextViewTextSize(R.id.quote,TypedValue.COMPLEX_UNIT_SP,font);
+        views.setInt(R.id.quote,"setMaxLines",Math.max(1,lines));
     }
 
     static void schedule(Context c) {
