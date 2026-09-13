@@ -29,7 +29,11 @@ public class LibraryActivity extends Activity {
         out.putString("query",query);super.onSaveInstanceState(out);
     }
     private Button button(String title,Runnable action) {
-        Button b=new Button(this);b.setText(title);b.setAllCaps(false);b.setOnClickListener(v->action.run());return b;
+        Button b=new Button(this);b.setText(title);b.setAllCaps(false);b.setTextSize(14);b.setTextColor(0xff644375);
+        android.graphics.drawable.GradientDrawable bg=new android.graphics.drawable.GradientDrawable();
+        bg.setColor(0xffece3ef);bg.setCornerRadius(dp(14));b.setBackground(bg);
+        b.setMinHeight(dp(44));b.setPadding(dp(14),dp(8),dp(14),dp(8));
+        b.setOnClickListener(v->action.run());return b;
     }
     private void render() {
         library=Libraries.active(this);
@@ -42,6 +46,8 @@ public class LibraryActivity extends Activity {
         });
         LinearLayout toolbar=new LinearLayout(this);
         toolbar.addView(button("返回",this::finish));
+        toolbar.setPadding(0,0,0,dp(12));
+        Space gap=new Space(this);toolbar.addView(gap,new LinearLayout.LayoutParams(dp(8),1));
         toolbar.addView(button("切换句库",this::choose));
         root.addView(toolbar);
         TextView title=new TextView(this);title.setText(favoritesOnly?"我的收藏":library.title);title.setTextSize(23);title.setTextColor(0xff302b32);root.addView(title);
