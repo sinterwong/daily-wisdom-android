@@ -58,7 +58,7 @@ public class QuoteWidget extends AppWidgetProvider {
             views.setViewVisibility(R.id.actions,actions?android.view.View.VISIBLE:android.view.View.GONE);
             views.setViewVisibility(R.id.source,source?android.view.View.VISIBLE:android.view.View.GONE);
             views.setViewVisibility(R.id.date_box,date?android.view.View.VISIBLE:android.view.View.GONE);
-            float available=Math.max(1,height-16-(actions?32:0)-(source?Math.ceil(16*fontScale)+7:0));
+            float available=Math.max(1,height-16-(actions?32:0)-(source?(int)Math.ceil(16*fontScale)+7:0));
             float font=Math.max(1,Math.min(fontSize(c),(available-4)/(1.6f*fontScale)));
             int lines=Math.max(1,Math.min(32,(int)(available/(font*fontScale*1.6f+4))));
             views.setTextViewText(R.id.quote, text);
