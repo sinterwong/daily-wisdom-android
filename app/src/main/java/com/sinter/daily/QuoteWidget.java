@@ -21,6 +21,14 @@ public class QuoteWidget extends AppWidgetProvider {
     static final String FAV = "com.sinter.daily.FAV";
     static final String TICK = "com.sinter.daily.TICK";
 
+    static int fontSize(Context c) {
+        return Math.max(14,Math.min(24,c.getSharedPreferences("widget-style",0).getInt("fontSize",20)));
+    }
+    static void setFontSize(Context c,int value) {
+        c.getSharedPreferences("widget-style",0).edit().putInt("fontSize",Math.max(14,Math.min(24,value))).commit();
+        refresh(c);
+    }
+
     static PendingIntent action(Context c, String action, int code) {
         return PendingIntent.getBroadcast(c, code,
                 new Intent(c, QuoteWidget.class).setAction(action),
@@ -42,10 +50,17 @@ public class QuoteWidget extends AppWidgetProvider {
             RemoteViews views = new RemoteViews(c.getPackageName(), R.layout.widget);
             String text = quoteId<0?"句库暂无内容，点开应用添加第一条。":Store.quote(c, quoteId).optString("text");
             int height = size.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 140);
-            int font = text.length() > 90 ? 16 : 19;
+            int width = size.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 180);
             float fontScale = c.getResources().getConfiguration().fontScale;
-            // Reserve CJK fallback-font ascent/descent, not just the nominal text size.
-            int lines = Math.max(1, Math.min(16, (int)((height - 80) / (font * fontScale * 1.6f + 4))));
+            boolean actions=width>=280 && height>=140;
+            boolean source=height>=110 && fontScale<=1.5f;
+            boolean date=width>=300 && height>=140 && fontScale<=1.5f;
+            views.setViewVisibility(R.id.actions,actions?android.view.View.VISIBLE:android.view.View.GONE);
+            views.setViewVisibility(R.id.source,source?android.view.View.VISIBLE:android.view.View.GONE);
+            views.setViewVisibility(R.id.date_box,date?android.view.View.VISIBLE:android.view.View.GONE);
+            float available=Math.max(1,height-16-(actions?32:0)-(source?Math.ceil(16*fontScale)+7:0));
+            float font=Math.max(1,Math.min(fontSize(c),(available-4)/(1.6f*fontScale)));
+            int lines=Math.max(1,Math.min(32,(int)(available/(font*fontScale*1.6f+4))));
             views.setTextViewText(R.id.quote, text);
             views.setTextViewTextSize(R.id.quote, TypedValue.COMPLEX_UNIT_SP, font);
             views.setInt(R.id.quote, "setMaxLines", lines);

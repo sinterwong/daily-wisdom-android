@@ -82,7 +82,8 @@ public class MainActivity extends Activity {
                 button(Store.held(this)?"恢复更新":"让它停留",()->{Store.hold(this);render();}));gap(body,12);
         body.addView(button("管理内容 · 浏览 / 新增 / 编辑",()->startActivity(new Intent(this,LibraryActivity.class))));gap(body,12);
         body.addView(button("＋ 放到手机桌面",this::pin));gap(body,8);
-        body.addView(button("从系统小组件添加",this::widgetHelp));gap(body,12);
+        body.addView(button("从系统小组件添加",this::widgetHelp));gap(body,8);
+        body.addView(button("组件字号 · "+QuoteWidget.fontSize(this),this::widgetFont));gap(body,12);
         row(body,button("我的收藏 · "+Store.favorites(this).size(),this::favorites),button("切换句库",this::chooseLibrary));gap(body,12);
         row(body,button("导入 JSON",this::importFile),button("导出当前句库",this::exportFile));gap(body,22);
         body.addView(text(Store.held(this)?"已暂停每日换句。点击「恢复更新」继续；「换一句」也会结束停留。":"每天换一条，同一天保持不变。读完当前句库一轮再重复；每个句库分别保存收藏和阅读进度。",13,muted));gap(body,16);
@@ -115,23 +116,28 @@ public class MainActivity extends Activity {
     }
     private void widgetHelp() {
         new AlertDialog.Builder(this).setTitle("从系统小组件添加")
-                .setMessage("1. 回到手机桌面，长按空白处。\n2. 选择「小组件」「添加小部件」或「窗口小工具」。\n3. 找到「一日一句」，长按卡片并拖到桌面。\n\n推荐 4×2，可长按卡片调整大小。部分桌面需进入「全部」或「Android 小部件」才能看到第三方组件。\n\n如果列表中暂时没有它，请先打开本应用一次，再返回桌面重试；确认应用安装在当前用户空间中。")
+                .setMessage("1. 回到手机桌面，长按空白处。\n2. 选择「小组件」「添加小部件」或「窗口小工具」。\n3. 找到「一日一句」，长按卡片并拖到桌面。\n\n默认 2×2，可长按卡片调整大小，也可拉成横向 4×1。部分桌面需进入「全部」或「Android 小部件」才能看到第三方组件。\n\n如果列表中暂时没有它，请先打开本应用一次，再返回桌面重试；确认应用安装在当前用户空间中。")
                 .setPositiveButton("回到桌面",(d,w)->{
                     try { startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)); }
                     catch (ActivityNotFoundException e) { message("回到桌面","请使用手机的 Home 手势或主页键返回桌面。"); }
                 }).setNegativeButton("关闭",null).show();
     }
+    private void widgetFont() {
+        LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(24),dp(12),dp(24),dp(12));
+        TextView preview=text("让一句话，陪你过一天。",QuoteWidget.fontSize(this),ink);box.addView(preview);
+        TextView value=text("字号："+QuoteWidget.fontSize(this)+"（14～24）",14,purple);box.addView(value);
+        SeekBar slider=new SeekBar(this);slider.setMax(10);slider.setProgress(QuoteWidget.fontSize(this)-14);box.addView(slider);
+        box.addView(text("应用于所有桌面卡片。空间不足时会自动缩小字号；长内容显示省略号，点开可看全文。",13,muted));
+        slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar bar,int progress,boolean user) { preview.setTextSize(progress+14);value.setText("字号："+(progress+14)+"（14～24）"); }
+            public void onStartTrackingTouch(SeekBar bar) { }
+            public void onStopTrackingTouch(SeekBar bar) { }
+        });
+        new AlertDialog.Builder(this).setTitle("组件字体大小").setView(box).setNegativeButton("取消",null)
+                .setPositiveButton("应用",(d,w)->{QuoteWidget.setFontSize(this,slider.getProgress()+14);render();}).show();
+    }
     private void favorites() {
-        List<Integer> ids=Store.favorites(this);
-        if (ids.isEmpty()) { message("收藏夹还是空的","遇到触动你的内容，点「♡ 收藏」，就会留在当前句库的收藏夹里。");return; }
-        String[] labels=new String[ids.size()];
-        for (int i=0;i<ids.size();i++) labels[i]=String.format(Locale.CHINA,"%03d  ",ids.get(i)+1)+Store.quote(this,ids.get(i)).optString("text");
-        new AlertDialog.Builder(this).setTitle("我想记住的话").setItems(labels,(d,pos)->{
-            int id=ids.get(pos);
-            new AlertDialog.Builder(this).setTitle(Libraries.active(this).title)
-                    .setMessage(Store.quote(this,id).optString("text")+"\n\n"+Store.source(this,id))
-                    .setPositiveButton("关闭",null).setNeutralButton("取消收藏",(dialog,w)->{Store.toggle(this,id);render();}).show();
-        }).setNegativeButton("关闭",null).show();
+        startActivity(new Intent(this,LibraryActivity.class).putExtra("favorites",true));
     }
     private void chooseLibrary() {
         List<QuoteLibrary> libraries=Libraries.all(this);
@@ -191,6 +197,6 @@ public class MainActivity extends Activity {
     }
     private void message(String title,String content) { new AlertDialog.Builder(this).setTitle(title).setMessage(content).setPositiveButton("知道了",null).show(); }
     private void help() {
-        message("每天一点，慢慢体会","本应用适用于支持标准小组件的 Android 8.0 及以上设备。长按桌面添加「一日一句」，推荐横向 4×2，长内容可放大或点开全文。\n\n支持从系统文件选择器导入 JSON，切换不同句库。可先导出当前句库作为格式参考；导出只包含内容，不包含收藏和阅读进度。\n\n多个桌面卡片共享当前句库。每日更新可能受系统省电策略影响而延迟，打开应用会检查日期并刷新。\n\n应用离线运行，无账号、广告及联网权限；内置书摘仅为示例内容，页码为 PDF 页序。");
+        message("每天一点，慢慢体会","本应用适用于支持标准小组件的 Android 8.0 及以上设备。长按桌面添加「一日一句」，默认 2×2，也支持横向 4×1，长内容可放大或点开全文。\n\n支持从系统文件选择器导入 JSON，切换不同句库。可先导出当前句库作为格式参考；导出只包含内容，不包含收藏和阅读进度。\n\n多个桌面卡片共享当前句库。每日更新可能受系统省电策略影响而延迟，打开应用会检查日期并刷新。\n\n应用离线运行，无账号、广告及联网权限；内置书摘仅为示例内容，页码为 PDF 页序。");
     }
 }

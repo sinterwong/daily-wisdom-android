@@ -16,10 +16,12 @@ public class LibraryActivity extends Activity {
     private ArrayAdapter<String> adapter;
     private TextView count;
     private String query="";
+    private boolean favoritesOnly;
     private int dp(int n) { return (int)(n*getResources().getDisplayMetrics().density+.5f); }
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        favoritesOnly=getIntent().getBooleanExtra("favorites",false);
         if (state!=null) query=state.getString("query","");
         render();
     }
@@ -42,23 +44,41 @@ public class LibraryActivity extends Activity {
         toolbar.addView(button("返回",this::finish));
         toolbar.addView(button("切换句库",this::choose));
         root.addView(toolbar);
-        TextView title=new TextView(this);title.setText(library.title);title.setTextSize(23);title.setTextColor(0xff302b32);root.addView(title);
-        boolean builtin=Libraries.BUILTIN.equals(library.id);
-        root.addView(button(builtin?"创建可编辑副本":"＋ 新增条目",builtin?this::copyBuiltin:()->edit(null)));
-        if (builtin) {
-            TextView note=new TextView(this);note.setText("内置示例可浏览；创建副本后可自由增删改。");root.addView(note);
-        }
+        TextView title=new TextView(this);title.setText(favoritesOnly?"我的收藏":library.title);title.setTextSize(23);title.setTextColor(0xff302b32);root.addView(title);
+        TextView subtitle=new TextView(this);subtitle.setText(favoritesOnly?library.title+" · 留住触动你的内容":"点击条目查看全文与编辑");subtitle.setTextColor(0xff807584);root.addView(subtitle);
+        if (!favoritesOnly) root.addView(button("＋ 新增条目",()->edit(null)));
         EditText search=new EditText(this);search.setSingleLine(true);search.setHint("搜索正文、作者或来源");
         root.addView(search);count=new TextView(this);root.addView(count);
         ListView list=new ListView(this);
         adapter=new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1,new ArrayList<String>()) {
             @Override public View getView(int position,View convert,ViewGroup parent) {
-                TextView row=(TextView)super.getView(position,convert,parent);
-                row.setMaxLines(3);row.setEllipsize(TextUtils.TruncateAt.END);
-                row.setTextSize(16);row.setPadding(dp(8),dp(14),dp(8),dp(14));return row;
+                LinearLayout outer=new LinearLayout(LibraryActivity.this);outer.setPadding(0,dp(6),0,dp(6));
+                LinearLayout card=new LinearLayout(LibraryActivity.this);card.setOrientation(LinearLayout.VERTICAL);
+                card.setPadding(dp(18),dp(16),dp(18),dp(12));
+                android.graphics.drawable.GradientDrawable bg=new android.graphics.drawable.GradientDrawable();
+                bg.setColor(0xfffff8ec);bg.setCornerRadius(dp(18));card.setBackground(bg);
+                outer.addView(card,new LinearLayout.LayoutParams(-1,-2));
+                JSONObject q=visible.get(position);
+                TextView quote=new TextView(LibraryActivity.this);quote.setText(q.optString("text"));quote.setTextSize(19);
+                quote.setTextColor(0xff302b32);quote.setLineSpacing(dp(5),1);quote.setMaxLines(4);quote.setEllipsize(TextUtils.TruncateAt.END);card.addView(quote);
+                LinearLayout foot=new LinearLayout(LibraryActivity.this);foot.setGravity(Gravity.CENTER_VERTICAL);card.addView(foot);
+                TextView source=new TextView(LibraryActivity.this);
+                source.setText(q.optString("author",library.json.optString("author",library.title))+"  ·  查看全文");
+                source.setTextColor(0xff817187);source.setTextSize(12);source.setMaxLines(2);
+                foot.addView(source,new LinearLayout.LayoutParams(0,-2,1));
+                boolean saved=Store.favoriteIds(LibraryActivity.this).contains(q.optString("id"));
+                Button favorite=button(saved?"♥ 已收藏":"♡ 收藏",()->{
+                    for (int i=0;i<library.items.length();i++) if (library.items.optJSONObject(i).optString("id").equals(q.optString("id"))) {
+                        Store.toggle(LibraryActivity.this,i);break;
+                    }
+                    QuoteWidget.refresh(LibraryActivity.this);filter();
+                });
+                favorite.setTextSize(12);foot.addView(favorite);
+                card.setOnClickListener(v->details(q));
+                return outer;
             }
         };
-        list.setAdapter(adapter);root.addView(list,new LinearLayout.LayoutParams(-1,0,1));
+        list.setDivider(null);list.setAdapter(adapter);root.addView(list,new LinearLayout.LayoutParams(-1,0,1));
         list.setOnItemClickListener((p,v,position,id)->details(visible.get(position)));
         search.setText(query);
         search.addTextChangedListener(new TextWatcher() {
@@ -71,15 +91,17 @@ public class LibraryActivity extends Activity {
     private void filter() {
         visible.clear();List<String> labels=new ArrayList<>();
         String needle=query.trim().toLowerCase(Locale.ROOT);
+        Set<String> saved=Store.favoriteIds(this);
         for (int i=0;i<library.items.length();i++) {
             JSONObject q=library.items.optJSONObject(i);
+            if (favoritesOnly && !saved.contains(q.optString("id"))) continue;
             String haystack=q.optString("text")+" "+q.optString("author",library.json.optString("author"))+" "+q.optString("source",library.json.optString("source"));
             if (haystack.toLowerCase(Locale.ROOT).contains(needle)) {
                 visible.add(q);labels.add((i+1)+". "+q.optString("text"));
             }
         }
         adapter.clear();adapter.addAll(labels);
-        count.setText(library.items.length()==0?"暂无内容，点击「新增条目」开始。":"显示 "+visible.size()+" / "+library.items.length()+" 条");
+        count.setText(favoritesOnly?(saved.isEmpty()?"还没有收藏。遇到喜欢的内容，点一下 ♡。":"显示 "+visible.size()+" / "+saved.size()+" 条收藏"):(library.items.length()==0?"暂无内容，点击「新增条目」开始。":"显示 "+visible.size()+" / "+library.items.length()+" 条"));
     }
     private void choose() {
         List<QuoteLibrary> all=Libraries.all(this);String[] labels=new String[all.size()];
@@ -87,13 +109,6 @@ public class LibraryActivity extends Activity {
         new AlertDialog.Builder(this).setTitle("选择句库（同时切换桌面内容）").setItems(labels,(d,i)->{
             Libraries.select(this,all.get(i).id);QuoteWidget.refresh(this);query="";render();
         }).setNegativeButton("取消",null).show();
-    }
-    private void copyBuiltin() {
-        try {
-            JSONObject root=new JSONObject(library.json.toString());
-            root.put("id","library-"+UUID.randomUUID()).put("title",library.title+" · 我的副本");
-            Libraries.save(this,QuoteLibrary.parse(root.toString()));QuoteWidget.refresh(this);render();
-        } catch (Exception e) { error(e); }
     }
     private void details(JSONObject q) {
         LinearLayout content=new LinearLayout(this);content.setOrientation(LinearLayout.VERTICAL);content.setPadding(dp(20),dp(12),dp(20),dp(12));
@@ -106,7 +121,7 @@ public class LibraryActivity extends Activity {
         TextView info=new TextView(this);info.setText(meta);info.setTextIsSelectable(true);content.addView(info);
         ScrollView scroll=new ScrollView(this);scroll.addView(content);
         AlertDialog.Builder dialog=new AlertDialog.Builder(this).setTitle("条目详情").setView(scroll).setNegativeButton("关闭",null);
-        if (!Libraries.BUILTIN.equals(library.id)) {
+        {
             dialog.setPositiveButton("编辑",(d,w)->edit(q));
             dialog.setNeutralButton("删除",(d,w)->new AlertDialog.Builder(this).setTitle("删除这条内容？")
                     .setMessage("该条目及其收藏将从当前句库删除。其他内容不受影响。")

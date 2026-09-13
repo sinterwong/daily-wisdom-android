@@ -46,7 +46,7 @@ final class Libraries {
         String id = c.getSharedPreferences("libraries",0).getString("active",BUILTIN);
         if (cached != null && cached.id.equals(id)) return cached;
         try {
-            cached = BUILTIN.equals(id) ? builtin(c) : QuoteLibrary.parse(read(new AtomicFile(file(c,id)).openRead()));
+            cached = BUILTIN.equals(id) && !file(c,id).exists() ? builtin(c) : QuoteLibrary.parse(read(new AtomicFile(file(c,id)).openRead()));
         } catch (Exception e) {
             c.getSharedPreferences("libraries",0).edit().putString("active",BUILTIN).commit();
             cached = builtin(c);
@@ -59,7 +59,6 @@ final class Libraries {
     }
     static boolean exists(Context c, String id) { return BUILTIN.equals(id) || file(c,id).exists(); }
     static synchronized void save(Context c, QuoteLibrary library) throws IOException {
-        if (BUILTIN.equals(library.id)) throw new IOException("该 id 属于内置示例，请给新句库换一个 id");
         AtomicFile file = new AtomicFile(file(c,library.id));
         FileOutputStream output = null;
         try {
@@ -114,12 +113,14 @@ final class Libraries {
     }
     static List<QuoteLibrary> all(Context c) {
         List<QuoteLibrary> result = new ArrayList<>();
-        result.add(builtin(c));
+        try { result.add(file(c,BUILTIN).exists()?QuoteLibrary.parse(read(new AtomicFile(file(c,BUILTIN)).openRead())):builtin(c)); }
+        catch (Exception e) { result.add(builtin(c)); }
         File[] files = directory(c).listFiles((dir,name)->name.endsWith(".json"));
         if (files != null) {
             Arrays.sort(files,Comparator.comparing(File::getName));
             for (File file : files) try {
-                result.add(QuoteLibrary.parse(read(new AtomicFile(file).openRead())));
+                QuoteLibrary entry=QuoteLibrary.parse(read(new AtomicFile(file).openRead()));
+                if (!BUILTIN.equals(entry.id)) result.add(entry);
             } catch (Exception ignored) { /* Ignore damaged entries without overwriting them. */ }
         }
         return result;

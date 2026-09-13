@@ -157,15 +157,63 @@ public class WidgetSmokeTest {
         return null;
     }
 
-    private void captureWidget(Context c, int id, String filename) {
+    @Test public void testLargestFontFitsSquareAndSingleRowWidgets() {
+        Context c=getInstrumentation().getTargetContext();
+        int previous=QuoteWidget.fontSize(c);
+        try {
+            QuoteWidget.setFontSize(c,999);assertEquals(24,QuoteWidget.fontSize(c));
+            getInstrumentation().runOnMainSync(()->{
+                int longest=0;
+                for (int i=1;i<Store.data(c).length();i++)
+                    if (Store.quote(c,i).optString("text").length()>Store.quote(c,longest).optString("text").length()) longest=i;
+                captureWidget(c,longest,"widget-square.png",140,140);
+                captureWidget(c,longest,"widget-strip.png",300,55);
+                android.content.res.Configuration config=new android.content.res.Configuration(c.getResources().getConfiguration());
+                config.fontScale=2;
+                captureWidget(c.createConfigurationContext(config),longest,"widget-accessible.png",110,40);
+            });
+            QuoteWidget.setFontSize(c,0);assertEquals(14,QuoteWidget.fontSize(c));
+        } finally { QuoteWidget.setFontSize(c,previous); }
+    }
+
+    @Test public void testBuiltinEditsPersistWithoutCopy() throws Exception {
+        Context c=getInstrumentation().getTargetContext();
+        Libraries.select(c,Libraries.BUILTIN);
+        QuoteLibrary before=Libraries.active(c);
+        try {
+            String id=before.items.optJSONObject(0).optString("id");
+            QuoteLibrary changed=LibraryEdits.change(before,id,new org.json.JSONObject().put("text","Direct built-in edit"));
+            Libraries.saveEdited(c,before,changed);
+            Libraries.select(c,Libraries.BUILTIN);
+            assertEquals("Direct built-in edit",Libraries.active(c).items.optJSONObject(0).optString("text"));
+            int count=0;for (QuoteLibrary lib:Libraries.all(c)) if (Libraries.BUILTIN.equals(lib.id)) count++;
+            assertEquals(1,count);
+        } finally { Libraries.save(c,before); }
+    }
+
+    @Test public void testFavoritesScreenFiltersSavedItems() throws Exception {
+        Context c=getInstrumentation().getTargetContext();
+        Libraries.save(c,QuoteLibrary.parse("{\"schemaVersion\":1,\"id\":\"favorites-ui\",\"title\":\"Favorites\",\"items\":[\"Alpha\",\"Beta\"]}"));
+        Store.prefs(c).edit().clear().commit();Store.toggle(c,1);
+        Activity a=getInstrumentation().startActivitySync(new Intent(c,LibraryActivity.class).putExtra("favorites",true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        getInstrumentation().runOnMainSync(()->{
+            android.widget.ListView list=findView(a.getWindow().getDecorView(),android.widget.ListView.class);
+            assertEquals(1,list.getAdapter().getCount());assertTrue(list.getAdapter().getItem(0).toString().contains("Beta"));
+            a.finish();
+        });
+    }
+
+    private void captureWidget(Context c, int id, String filename) { captureWidget(c,id,filename,360,180); }
+    private void captureWidget(Context c, int id, String filename,int widthDp,int heightDp) {
         Bundle size = new Bundle();
-        size.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 180);
+        size.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, heightDp);
+        size.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, widthDp);
         RemoteViews views = QuoteWidget.buildViews(c, id, size);
         View widget = views.apply(c, new FrameLayout(c));
         assertNotNull(widget.findViewById(R.id.quote));
         assertNotNull(widget.findViewById(R.id.day_number));
         float density = c.getResources().getDisplayMetrics().density;
-        int width = (int)(360 * density), height = (int)(180 * density);
+        int width = (int)(widthDp * density), height = (int)(heightDp * density);
         widget.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(height,View.MeasureSpec.EXACTLY));
         widget.layout(0,0,width,height);
