@@ -199,7 +199,12 @@ public class WidgetSmokeTest {
         getInstrumentation().runOnMainSync(()->{
             android.widget.ListView list=findView(a.getWindow().getDecorView(),android.widget.ListView.class);
             assertEquals(1,list.getAdapter().getCount());assertTrue(list.getAdapter().getItem(0).toString().contains("Beta"));
-            a.finish();
+        });
+        getInstrumentation().waitForIdleSync();
+        getInstrumentation().runOnMainSync(()->{
+            View root=a.getWindow().getDecorView();
+            Bitmap bitmap=Bitmap.createBitmap(root.getWidth(),root.getHeight(),Bitmap.Config.ARGB_8888);
+            root.draw(new Canvas(bitmap));saveBitmap(c,bitmap,"favorites.png");a.finish();
         });
     }
 
@@ -226,6 +231,9 @@ public class WidgetSmokeTest {
                 layout.getEllipsisCount(lastLine) > 0);
         Bitmap bitmap = Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
         widget.draw(new Canvas(bitmap));
+        saveBitmap(c,bitmap,filename);
+    }
+    private void saveBitmap(Context c,Bitmap bitmap,String filename) {
         try (FileOutputStream output = new FileOutputStream(new File(c.getExternalFilesDir(null),filename))) {
             assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG,100,output));
         } catch (Exception e) { throw new AssertionError(e); }
