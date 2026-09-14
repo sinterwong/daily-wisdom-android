@@ -200,7 +200,6 @@ public class QuoteWidget extends AppWidgetProvider {
             refresh(c);
         } else if (THEME.equals(action)) {
             setTheme(c,(theme(c)+1)%3);
-            android.widget.Toast.makeText(c,"组件主题："+themeName(c),android.widget.Toast.LENGTH_SHORT).show();
         } else if (FAV.equals(action)) {
             if (Libraries.active(c).id.equals(intent.getStringExtra("libraryId"))) {
                 String key = intent.getStringExtra("quoteKey");
