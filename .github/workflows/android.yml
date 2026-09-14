@@ -108,7 +108,6 @@ jobs:
             adb pull /data/local/tmp/widget-theme-0.png app/build/reports/widget-theme-0.png
             adb pull /data/local/tmp/widget-theme-1.png app/build/reports/widget-theme-1.png
             adb pull /data/local/tmp/widget-theme-2.png app/build/reports/widget-theme-2.png
-            adb pull /data/local/tmp/widget-theme-3.png app/build/reports/widget-theme-3.png
             adb pull /data/local/tmp/widget-square.png app/build/reports/widget-square.png
             adb pull /data/local/tmp/widget-strip.png app/build/reports/widget-strip.png
             adb pull /data/local/tmp/widget-accessible.png app/build/reports/widget-accessible.png

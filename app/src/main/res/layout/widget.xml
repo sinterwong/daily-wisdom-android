@@ -5,12 +5,18 @@
         <TextView android:text="让一句话，陪你过一天。" android:id="@+id/quote" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent"
             android:gravity="center_vertical" android:textSize="19sp" android:textColor="#FFF9F0"
             android:lineSpacingExtra="4dp" android:ellipsize="end" android:maxLines="6"/>
-        <LinearLayout android:visibility="gone" android:layout_marginStart="10dp" android:id="@+id/date_box" android:layout_width="60dp" android:layout_height="62dp"
-            android:orientation="vertical" android:gravity="center" android:background="@drawable/date_frame">
-            <TextView android:text="01" android:id="@+id/day_number" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:textSize="27sp" android:textColor="#FFF9F0" android:includeFontPadding="false"/>
-            <TextView android:text="1月" android:id="@+id/month" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:textSize="12sp" android:textColor="#D5CDDB"/>
+        <LinearLayout android:layout_marginStart="6dp" android:layout_width="wrap_content" android:layout_height="match_parent"
+            android:orientation="vertical" android:gravity="top|center_horizontal">
+            <TextView android:id="@+id/theme" android:layout_width="32dp" android:layout_height="32dp"
+                android:gravity="center" android:text="◐" android:textSize="16sp" android:textColor="#D6C2E6"
+                android:contentDescription="切换组件主题"/>
+            <LinearLayout android:visibility="gone" android:layout_marginTop="4dp" android:id="@+id/date_box" android:layout_width="60dp" android:layout_height="62dp"
+                android:orientation="vertical" android:gravity="center" android:background="@drawable/date_frame">
+                <TextView android:text="01" android:id="@+id/day_number" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:textSize="27sp" android:textColor="#FFF9F0" android:includeFontPadding="false"/>
+                <TextView android:text="1月" android:id="@+id/month" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:textSize="12sp" android:textColor="#D5CDDB"/>
+            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
     <TextView android:text="一日一句 · 每日更新 · 支持导入自己的内容" android:id="@+id/source" android:layout_width="match_parent" android:layout_height="wrap_content"

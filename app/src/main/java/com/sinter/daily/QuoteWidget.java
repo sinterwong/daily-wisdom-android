@@ -20,6 +20,7 @@ public class QuoteWidget extends AppWidgetProvider {
     static final String NEXT = "com.sinter.daily.NEXT";
     static final String FAV = "com.sinter.daily.FAV";
     static final String TICK = "com.sinter.daily.TICK";
+    static final String THEME = "com.sinter.daily.THEME";
 
     static int fontSize(Context c) {
         return Math.max(14,Math.min(24,c.getSharedPreferences("widget-style",0).getInt("fontSize",20)));
@@ -30,25 +31,25 @@ public class QuoteWidget extends AppWidgetProvider {
     }
 
     static int theme(Context c) {
-        return Math.max(0,Math.min(3,c.getSharedPreferences("widget-style",0).getInt("theme",0)));
+        return Math.max(0,Math.min(2,c.getSharedPreferences("widget-style",0).getInt("theme",0)));
     }
     static void setTheme(Context c,int value) {
-        c.getSharedPreferences("widget-style",0).edit().putInt("theme",Math.max(0,Math.min(3,value))).commit();
+        c.getSharedPreferences("widget-style",0).edit().putInt("theme",Math.max(0,Math.min(2,value))).commit();
         refresh(c);
     }
     static String themeName(Context c) {
-        return new String[]{"黑色","浅色","透明 · 浅色文字","透明 · 深色文字"}[theme(c)];
+        return new String[]{"黑色","浅色","透明"}[theme(c)];
     }
     private static void applyTheme(Context c,RemoteViews views) {
         int theme=theme(c);
-        boolean darkText=theme==1 || theme==3;
+        boolean darkText=theme==1 || theme==2;
         views.setInt(R.id.card,"setBackgroundResource",theme==0?R.drawable.card:theme==1?R.drawable.card_light:R.drawable.card_transparent);
         views.setInt(R.id.date_box,"setBackgroundResource",darkText?R.drawable.date_frame_light:R.drawable.date_frame);
         int primary=darkText?0xff25232a:0xfffff9f0;
         int secondary=darkText?0xff655c6e:0xffd5cddb;
         for (int id:new int[]{R.id.quote,R.id.day_number}) views.setTextColor(id,primary);
         for (int id:new int[]{R.id.month,R.id.source}) views.setTextColor(id,secondary);
-        for (int id:new int[]{R.id.open,R.id.fav,R.id.next}) views.setTextColor(id,darkText?0xff644375:0xffd6c2e6);
+        for (int id:new int[]{R.id.open,R.id.fav,R.id.next,R.id.theme}) views.setTextColor(id,darkText?0xff644375:0xffd6c2e6);
     }
 
     static PendingIntent action(Context c, String action, int code) {
@@ -101,7 +102,7 @@ public class QuoteWidget extends AppWidgetProvider {
             float fontScale = c.getResources().getConfiguration().fontScale;
             boolean actions=width>=280 && height>=140;
             boolean source=height>=110 && fontScale<=1.5f;
-            boolean date=width>=300 && height>=140 && fontScale<=1.5f;
+            boolean date=width>=300 && height>=180 && fontScale<=1.5f;
             views.setViewVisibility(R.id.actions,actions?android.view.View.VISIBLE:android.view.View.GONE);
             views.setViewVisibility(R.id.source,source?android.view.View.VISIBLE:android.view.View.GONE);
             views.setViewVisibility(R.id.date_box,date?android.view.View.VISIBLE:android.view.View.GONE);
@@ -119,6 +120,7 @@ public class QuoteWidget extends AppWidgetProvider {
             views.setOnClickPendingIntent(R.id.open, open);
             views.setOnClickPendingIntent(R.id.date_box, open);
             views.setOnClickPendingIntent(R.id.next, action(c, NEXT, 1));
+            views.setOnClickPendingIntent(R.id.theme, action(c, THEME, 5));
             // Capture the displayed quote: a tap around midnight must favorite what the user saw.
             PendingIntent favorite = PendingIntent.getBroadcast(c, 2,
                     new Intent(c, QuoteWidget.class).setAction(FAV).putExtra("libraryId", Libraries.active(c).id).putExtra("quoteKey", Store.quote(c, quoteId).optString("id")),
@@ -196,6 +198,9 @@ public class QuoteWidget extends AppWidgetProvider {
         } else if (NEXT.equals(action)) {
             Store.next(c);
             refresh(c);
+        } else if (THEME.equals(action)) {
+            setTheme(c,(theme(c)+1)%3);
+            android.widget.Toast.makeText(c,"组件主题："+themeName(c),android.widget.Toast.LENGTH_SHORT).show();
         } else if (FAV.equals(action)) {
             if (Libraries.active(c).id.equals(intent.getStringExtra("libraryId"))) {
                 String key = intent.getStringExtra("quoteKey");

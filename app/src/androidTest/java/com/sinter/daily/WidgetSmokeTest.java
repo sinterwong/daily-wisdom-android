@@ -264,7 +264,7 @@ public class WidgetSmokeTest {
     @Test public void testWidgetThemesHaveCorrectBackgroundAndText() {
         Context c=getInstrumentation().getTargetContext();int previous=QuoteWidget.theme(c);
         try {
-            for (int theme=0;theme<4;theme++) {
+            for (int theme=0;theme<3;theme++) {
                 final int selected=theme;QuoteWidget.setTheme(c,selected);
                 getInstrumentation().runOnMainSync(()->{
                     View widget=QuoteWidget.buildViews(c,Store.current(c),new Bundle()).apply(c,new FrameLayout(c));
@@ -272,11 +272,26 @@ public class WidgetSmokeTest {
                     widget.getBackground().setBounds(0,0,100,100);widget.getBackground().draw(new Canvas(background));
                     assertEquals(selected>=2?0:255,android.graphics.Color.alpha(background.getPixel(50,50)));
                     android.widget.TextView text=widget.findViewById(R.id.quote);
-                    assertEquals(selected==1||selected==3?0xff25232a:0xfffff9f0,text.getCurrentTextColor());
+                    assertEquals(selected>=1?0xff25232a:0xfffff9f0,text.getCurrentTextColor());
+                    assertEquals(View.VISIBLE,widget.findViewById(R.id.theme).getVisibility());
                     background.recycle();
                     captureWidget(c,0,"widget-theme-"+selected+".png",180,140);
                 });
             }
+        } finally { QuoteWidget.setTheme(c,previous); }
+    }
+
+    @Test public void testWidgetThemeButtonCyclesAllThreeThemes() {
+        Context c=getInstrumentation().getTargetContext();int previous=QuoteWidget.theme(c);
+        try {
+            QuoteWidget.setTheme(c,0);
+            QuoteWidget receiver=new QuoteWidget();
+            receiver.onReceive(c,new Intent(c,QuoteWidget.class).setAction(QuoteWidget.THEME));
+            assertEquals(1,QuoteWidget.theme(c));
+            receiver.onReceive(c,new Intent(c,QuoteWidget.class).setAction(QuoteWidget.THEME));
+            assertEquals(2,QuoteWidget.theme(c));
+            receiver.onReceive(c,new Intent(c,QuoteWidget.class).setAction(QuoteWidget.THEME));
+            assertEquals(0,QuoteWidget.theme(c));
         } finally { QuoteWidget.setTheme(c,previous); }
     }
 

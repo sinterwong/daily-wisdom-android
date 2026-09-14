@@ -85,8 +85,7 @@ public class MainActivity extends Activity {
         body.addView(button("管理内容 · 浏览 / 新增 / 编辑",()->startActivity(new Intent(this,LibraryActivity.class))));gap(body,12);
         body.addView(button("＋ 放到手机桌面",this::pin));gap(body,8);
         body.addView(button("从系统小组件添加",this::widgetHelp));gap(body,8);
-        body.addView(button("组件字号 · "+QuoteWidget.fontSize(this),this::widgetFont));gap(body,8);
-        body.addView(button("组件主题 · "+QuoteWidget.themeName(this),this::widgetTheme));gap(body,12);
+        body.addView(button("组件字号 · "+QuoteWidget.fontSize(this),this::widgetFont));gap(body,12);
         row(body,button("我的收藏 · "+Store.favorites(this).size(),this::favorites),button("切换句库",this::chooseLibrary));gap(body,12);
         row(body,button("导入 JSON",this::importFile),button("导出当前句库",this::exportFile));gap(body,22);
         body.addView(text(Store.held(this)?"已暂停每日换句。点击「恢复更新」继续；「换一句」也会结束停留。":"每天换一条，同一天保持不变。读完当前句库一轮再重复；每个句库分别保存收藏和阅读进度。",13,muted));gap(body,16);
@@ -141,14 +140,6 @@ public class MainActivity extends Activity {
                         Toast.makeText(this,current<0?"句库已清空，可以添加新内容":"已删除，已换下一条",Toast.LENGTH_SHORT).show();
                     } catch (Exception e) { message("未能删除",e.getMessage()); }
                 }).show();
-    }
-    private void widgetTheme() {
-        String[] labels={"黑色","浅色","透明 · 浅色文字（适合深色壁纸）","透明 · 深色文字（适合浅色壁纸）"};
-        int[] selected={QuoteWidget.theme(this)};
-        new AlertDialog.Builder(this).setTitle("桌面组件主题")
-                .setSingleChoiceItems(labels,selected[0],(d,which)->selected[0]=which)
-                .setNegativeButton("取消",null)
-                .setPositiveButton("应用",(d,w)->{QuoteWidget.setTheme(this,selected[0]);render();}).show();
     }
     private void widgetFont() {
         LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(24),dp(12),dp(24),dp(12));
